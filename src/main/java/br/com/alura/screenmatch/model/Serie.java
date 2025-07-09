@@ -1,21 +1,42 @@
 package br.com.alura.screenmatch.model;
 
 import br.com.alura.screenmatch.service.traducao.ConsultaMyMemory;
+import jakarta.persistence.*;
 import java.util.OptionalDouble;
 
+// @Entity: Marca esta classe como uma entidade JPA, ou seja, um objeto que pode ser persistido no banco de dados.
+@Entity
+// @Table: Especifica o nome da tabela no banco de dados que esta entidade irá representar.
+@Table(name = "series")
 public class Serie {
+    // @Id: Designa este campo como a chave primária da tabela.
+    @Id
+    // @GeneratedValue: Configura a estratégia de geração da chave primária.
+    // GenerationType.IDENTITY indica que o próprio banco de dados será responsável por gerar e auto-incrementar o valor.
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // @Column(unique = true): Adiciona uma restrição ao banco de dados para garantir
+    // que não possam existir duas séries com o mesmo título.
+    @Column(unique = true)
     private String titulo;
     private Integer totalTemporadas;
     private Double avaliacao;
+    // @Enumerated(EnumType.STRING): Instrui o JPA a salvar o enum 'Categoria' como uma String no banco
+    // (ex: "ACAO", "COMEDIA"), o que é muito mais legível que o padrão (que salva números).
+    @Enumerated(EnumType.STRING)
     private Categoria genero;
     private String atores;
     private String poster;
     private String sinopse;
 
+    // Construtor padrão (sem argumentos) é uma exigência do JPA para criar instâncias da entidade.
+    public Serie() {}
+
+    // Construtor para criar a entidade a partir dos dados recebidos da API (DTO).
     public Serie(DadosSerie dadosSerie) {
         this.titulo = dadosSerie.titulo();
         this.totalTemporadas = dadosSerie.totalTemporadas();
-        // Tratamento para evitar erro caso a avaliação não seja um número válido.
         try {
             this.avaliacao = OptionalDouble.of(Double.valueOf(dadosSerie.avaliacao())).orElse(0);
         } catch (NumberFormatException e) {
@@ -24,10 +45,14 @@ public class Serie {
         this.genero = Categoria.fromString(dadosSerie.genero().split(",")[0].trim());
         this.atores = dadosSerie.atores();
         this.poster = dadosSerie.poster();
-        // A sinopse agora é traduzida usando a nova classe de consulta à API MyMemory.
         this.sinopse = ConsultaMyMemory.obterTraducao(dadosSerie.sinopse()).trim();
     }
-    // Getters e Setters...
+
+    // GETTERS E SETTERS...
+    public Long getId() {
+        return id;
+    }
+
     public String getTitulo() {
         return titulo;
     }
@@ -86,12 +111,12 @@ public class Serie {
 
     @Override
     public String toString() {
-        return  "(Gênero: " + genero + ")" +
-                ", (Título: " + titulo + ')' +
-                ", (Total de temporadas: " + totalTemporadas + ")" +
-                ", (Avaliação: " + avaliacao + ")" +
-                ", (Atores: " + atores + ")" +
-                ", (Poster: " + poster + ")" +
-                ", (Sinopse: " + sinopse + ")";
+        return  "Gênero: " + genero +
+                ", Título: '" + titulo + '\'' +
+                ", Total de Temporadas: " + totalTemporadas +
+                ", Avaliação: " + avaliacao +
+                ", Atores: '" + atores + '\'' +
+                ", Pôster: '" + poster + '\'' +
+                ", Sinopse: '" + sinopse + '\'';
     }
 }
