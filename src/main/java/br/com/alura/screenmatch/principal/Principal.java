@@ -6,14 +6,12 @@ import br.com.alura.screenmatch.model.Serie;
 import br.com.alura.screenmatch.repository.SerieRepository;
 import br.com.alura.screenmatch.service.ConsumoApi;
 import br.com.alura.screenmatch.service.ConverteDados;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 
 public class Principal {
 
@@ -21,10 +19,10 @@ public class Principal {
     private ConsumoApi consumo = new ConsumoApi();
     private ConverteDados conversor = new ConverteDados();
     private final String ENDERECO = "https://www.omdbapi.com/?t=";
-    private final String API_KEY = "&apikey=6585022c"; // Use a sua própria chave da API
+    private final String API_KEY = "&apikey=6585022c"; // Use sua própria chave da API
 
-    // Lista para armazenar as séries que buscamos, já convertidas para nosso modelo de domínio.
-    // A aplicação opera com base nesta lista de objetos 'Serie'.
+    // Esta lista em memória ainda existe, mas seu papel está diminuindo.
+    // O ideal é que todas as operações de leitura passem a usar o repositório.
     private List<Serie> series = new ArrayList<>();
 
     private SerieRepository repositorio;
@@ -37,11 +35,13 @@ public class Principal {
         var opcao = -1;
         while (opcao != 0) {
             var menu = """
-                    1 - Buscar séries
-                    2 - Buscar episódios por série
-                    3 - Listar séries buscadas
+                    *************************************************
+                    1 - Salvar nova série no banco
+                    2 - Buscar episódios de uma série
+                    3 - Listar séries salvas no banco
                     
                     0 - Sair
+                    *************************************************
                     """;
 
             System.out.println(menu);
@@ -70,33 +70,31 @@ public class Principal {
 
     private void buscarSerieWeb() {
         DadosSerie dados = getDadosSerie();
-        // Converte os dados brutos da API (DadosSerie) para o nosso modelo de domínio (Serie).
-        // A conversão é feita imediatamente após a busca para centralizar a lógica.
         Serie serie = new Serie(dados);
-        // Adiciona a série já convertida à nossa lista principal.
-        //series.add(serie);
+        // O método .save() persiste a entidade no banco de dados.
         repositorio.save(serie);
-        System.out.println("\nSérie adicionada com sucesso!");
-        System.out.println(serie);
+        System.out.println("\nSérie salva no banco de dados com sucesso!");
     }
 
     private DadosSerie getDadosSerie() {
         System.out.println("Digite o nome da série para busca:");
         var nomeSerie = leitura.nextLine();
-        // Este método tem a responsabilidade única de buscar e desserializar os dados brutos da API.
         var json = consumo.obterDados(ENDERECO + nomeSerie.replace(" ", "+") + API_KEY);
         DadosSerie dados = conversor.obterDados(json, DadosSerie.class);
         return dados;
     }
 
     private void buscarEpisodioPorSerie() {
+        // Para este método funcionar corretamente, primeiro listamos as séries do banco.
         listarSeriesBuscadas();
-        System.out.println("\nEscolha uma série pelo nome para buscar os episódios:");
+        System.out.println("\nDigite o nome da série da qual deseja ver os episódios:");
         var nomeSerie = leitura.nextLine();
 
-        // Busca na nossa lista de séries. Como a lista já é de objetos 'Serie',
-        // podemos usar diretamente os métodos da classe, como 'getTitulo()'.
-        // O 'Optional' é usado para evitar erros caso a série não seja encontrada.
+        // Opcional: buscar no banco de dados em vez da lista em memória
+        // Optional<Serie> serieEncontrada = repositorio.findByTituloContainingIgnoreCase(nomeSerie);
+
+        // A busca atual ainda ocorre na lista em memória 'series', que não reflete o banco inteiro.
+        // O ideal é refatorar para buscar do repositório.
         Optional<Serie> serieEncontrada = series.stream()
                 .filter(s -> s.getTitulo().equalsIgnoreCase(nomeSerie))
                 .findFirst();
@@ -113,15 +111,18 @@ public class Principal {
             System.out.println("\nEpisódios da série: " + serieAchada.getTitulo());
             temporadas.forEach(System.out::println);
         } else {
-            System.out.println("Série não encontrada na lista!");
+            System.out.println("Série não encontrada!");
         }
     }
 
     private void listarSeriesBuscadas() {
-        // A lógica de listagem se torna muito mais simples.
-        // Como a lista principal já contém objetos 'Serie' formatados,
-        // basta ordenar a lista e depois imprimir cada elemento.
-        System.out.println("\nSéries buscadas, ordenadas por gênero:");
+        // PONTO-CHAVE: Leitura de dados do banco.
+        // O método `findAll()` do JpaRepository executa um 'SELECT *' na tabela de séries
+        // e retorna uma lista de todas as entidades 'Serie' persistidas.
+        series = repositorio.findAll();
+
+        System.out.println("\nSéries salvas no banco de dados:");
+        // A ordenação agora é feita na lista de séries que acabamos de buscar do banco.
         series.sort(Comparator.comparing(Serie::getGenero));
         series.forEach(System.out::println);
     }
