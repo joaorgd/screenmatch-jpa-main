@@ -2,43 +2,49 @@ package br.com.alura.screenmatch.model;
 
 import br.com.alura.screenmatch.service.traducao.ConsultaMyMemory;
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.OptionalDouble;
 
-// @Entity: Marca esta classe como uma entidade JPA, ou seja, um objeto que pode ser persistido no banco de dados.
+// @Entity informa ao JPA que esta classe corresponde a uma tabela no banco de dados.
 @Entity
-// @Table: Especifica o nome da tabela no banco de dados que esta entidade irá representar.
+// @Table especifica o nome da tabela. Se omitido, o nome da classe seria usado.
 @Table(name = "series")
 public class Serie {
-    // @Id: Designa este campo como a chave primária da tabela.
+    // @Id marca este campo como a chave primária da tabela.
     @Id
-    // @GeneratedValue: Configura a estratégia de geração da chave primária.
-    // GenerationType.IDENTITY indica que o próprio banco de dados será responsável por gerar e auto-incrementar o valor.
+    // @GeneratedValue define a estratégia de geração automática da chave primária.
+    // GenerationType.IDENTITY delega a criação do valor para o banco de dados (ex: auto-incremento).
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // @Column(unique = true): Adiciona uma restrição ao banco de dados para garantir
-    // que não possam existir duas séries com o mesmo título.
+    // @Column(unique = true) cria uma restrição na tabela para não haver títulos duplicados.
     @Column(unique = true)
     private String titulo;
     private Integer totalTemporadas;
     private Double avaliacao;
-    // @Enumerated(EnumType.STRING): Instrui o JPA a salvar o enum 'Categoria' como uma String no banco
-    // (ex: "ACAO", "COMEDIA"), o que é muito mais legível que o padrão (que salva números).
+    // @Enumerated(EnumType.STRING) salva o valor do enum como texto (ex: "ACAO") no banco,
+    // tornando os dados mais legíveis do que o padrão numérico.
     @Enumerated(EnumType.STRING)
     private Categoria genero;
     private String atores;
     private String poster;
     private String sinopse;
 
-    // Construtor padrão (sem argumentos) é uma exigência do JPA para criar instâncias da entidade.
+    // @Transient indica ao JPA para ignorar este campo. Ele não será salvo no banco de dados
+    // e existirá apenas em memória, no objeto Java.
+    @Transient
+    private List<Episodio> episodios = new ArrayList<>();
+
+    // Construtor padrão (vazio) é obrigatório para que o JPA possa criar instâncias desta classe.
     public Serie() {}
 
-    // Construtor para criar a entidade a partir dos dados recebidos da API (DTO).
+    // Construtor utilizado para converter os dados brutos da API (DTO) numa entidade Serie.
     public Serie(DadosSerie dadosSerie) {
         this.titulo = dadosSerie.titulo();
         this.totalTemporadas = dadosSerie.totalTemporadas();
         try {
-            this.avaliacao = OptionalDouble.of(Double.valueOf(dadosSerie.avaliacao())).orElse(0);
+            this.avaliacao = OptionalDouble.of(Double.valueOf(dadosSerie.avaliacao())).orElse(0.0);
         } catch (NumberFormatException e) {
             this.avaliacao = 0.0;
         }
@@ -48,9 +54,14 @@ public class Serie {
         this.sinopse = ConsultaMyMemory.obterTraducao(dadosSerie.sinopse()).trim();
     }
 
-    // GETTERS E SETTERS...
+    // Getters e Setters são métodos de acesso aos atributos da classe.
+
     public Long getId() {
         return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getTitulo() {
@@ -109,6 +120,16 @@ public class Serie {
         this.sinopse = sinopse;
     }
 
+    public List<Episodio> getEpisodios() {
+        return episodios;
+    }
+
+    public void setEpisodios(List<Episodio> episodios) {
+        this.episodios = episodios;
+    }
+
+    // O método toString() é usado para obter uma representação textual do objeto,
+    // útil para depuração e exibição no console.
     @Override
     public String toString() {
         return  "Gênero: " + genero +

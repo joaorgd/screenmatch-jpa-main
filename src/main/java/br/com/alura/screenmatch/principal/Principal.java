@@ -3,8 +3,10 @@ package br.com.alura.screenmatch.principal;
 import br.com.alura.screenmatch.model.DadosSerie;
 import br.com.alura.screenmatch.model.DadosTemporada;
 import br.com.alura.screenmatch.model.Serie;
+import br.com.alura.screenmatch.repository.SerieRepository;
 import br.com.alura.screenmatch.service.ConsumoApi;
 import br.com.alura.screenmatch.service.ConverteDados;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -24,6 +26,12 @@ public class Principal {
     // Lista para armazenar as séries que buscamos, já convertidas para nosso modelo de domínio.
     // A aplicação opera com base nesta lista de objetos 'Serie'.
     private List<Serie> series = new ArrayList<>();
+
+    private SerieRepository repositorio;
+
+    public Principal(SerieRepository repositorio) {
+        this.repositorio = repositorio;
+    }
 
     public void exibeMenu() {
         var opcao = -1;
@@ -66,7 +74,8 @@ public class Principal {
         // A conversão é feita imediatamente após a busca para centralizar a lógica.
         Serie serie = new Serie(dados);
         // Adiciona a série já convertida à nossa lista principal.
-        series.add(serie);
+        //series.add(serie);
+        repositorio.save(serie);
         System.out.println("\nSérie adicionada com sucesso!");
         System.out.println(serie);
     }
