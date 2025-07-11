@@ -6,34 +6,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalDouble;
 
-// @Entity informa ao JPA que esta classe corresponde a uma tabela no banco de dados.
 @Entity
-// @Table especifica o nome da tabela. Se omitido, o nome da classe seria usado.
 @Table(name = "series")
 public class Serie {
-    // @Id marca este campo como a chave primária da tabela.
     @Id
-    // @GeneratedValue define a estratégia de geração automática da chave primária.
-    // GenerationType.IDENTITY delega a criação do valor para o banco de dados (ex: auto-incremento).
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // @Column(unique = true) cria uma restrição na tabela para não haver títulos duplicados.
     @Column(unique = true)
     private String titulo;
     private Integer totalTemporadas;
     private Double avaliacao;
-    // @Enumerated(EnumType.STRING) salva o valor do enum como texto (ex: "ACAO") no banco,
-    // tornando os dados mais legíveis do que o padrão numérico.
     @Enumerated(EnumType.STRING)
     private Categoria genero;
     private String atores;
     private String poster;
     private String sinopse;
 
-    // @Transient indica ao JPA para ignorar este campo. Ele não será salvo no banco de dados
-    // e existirá apenas em memória, no objeto Java.
-    @Transient
+    // @OneToMany: Define um relacionamento "um-para-muitos". Uma Série tem muitos Episódios.
+    // mappedBy = "serie": Indica que a entidade 'Serie' é o lado inverso (não o dono) do relacionamento.
+    // O relacionamento é "mapeado por" (controlado pelo) campo 'serie' na classe 'Episodio'.
+    // Isso evita a criação de uma tabela de junção extra, usando a chave estrangeira na tabela de episódios.
+    @OneToMany(mappedBy = "serie", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<Episodio> episodios = new ArrayList<>();
 
     // Construtor padrão (vazio) é obrigatório para que o JPA possa criar instâncias desta classe.
@@ -54,8 +48,7 @@ public class Serie {
         this.sinopse = ConsultaMyMemory.obterTraducao(dadosSerie.sinopse()).trim();
     }
 
-    // Getters e Setters são métodos de acesso aos atributos da classe.
-
+    // Getters e Setters
     public Long getId() {
         return id;
     }
@@ -125,19 +118,20 @@ public class Serie {
     }
 
     public void setEpisodios(List<Episodio> episodios) {
+        // Para cada episódio adicionado, estabelece a referência bidirecional.
+        episodios.forEach(e -> e.setSerie(this));
         this.episodios = episodios;
     }
 
-    // O método toString() é usado para obter uma representação textual do objeto,
-    // útil para depuração e exibição no console.
     @Override
     public String toString() {
-        return  "Gênero: " + genero +
+        return "Gênero: " + genero +
                 ", Título: '" + titulo + '\'' +
                 ", Total de Temporadas: " + totalTemporadas +
                 ", Avaliação: " + avaliacao +
                 ", Atores: '" + atores + '\'' +
                 ", Pôster: '" + poster + '\'' +
-                ", Sinopse: '" + sinopse + '\'';
+                ", Sinopse: '" + sinopse + '\'' +
+                ", Episódios: '" + episodios + '\'';
     }
 }

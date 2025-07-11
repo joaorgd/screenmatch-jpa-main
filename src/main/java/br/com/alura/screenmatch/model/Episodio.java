@@ -1,15 +1,30 @@
 package br.com.alura.screenmatch.model;
 
+import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
+@Entity
+@Table(name = "episodios")
 public class Episodio {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     private Integer temporada;
     private String titulo;
     private Integer numeroEpisodio;
     private Double avaliacao;
     private LocalDate dataLancamento;
 
+    // @ManyToOne: Define um relacionamento "muitos-para-um". Muitos Episódios pertencem a uma Série.
+    // Esta é a entidade "dona" do relacionamento, e é aqui que a chave estrangeira (ex: serie_id) será criada.
+    @ManyToOne
+    private Serie serie;
+
+    // Construtor padrão (vazio) exigido pelo JPA.
+    public Episodio() {}
+
+    // Construtor para mapear os dados da API (DTO) para a entidade.
     public Episodio(Integer numeroTemporada, DadosEpisodio dadosEpisodio) {
         this.temporada = numeroTemporada;
         this.titulo = dadosEpisodio.titulo();
@@ -26,6 +41,15 @@ public class Episodio {
         } catch (DateTimeParseException ex) {
             this.dataLancamento = null;
         }
+    }
+
+    // Getters e Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public Integer getTemporada() {
@@ -68,12 +92,20 @@ public class Episodio {
         this.dataLancamento = dataLancamento;
     }
 
+    public Serie getSerie() {
+        return serie;
+    }
+
+    public void setSerie(Serie serie) {
+        this.serie = serie;
+    }
+
     @Override
     public String toString() {
-        return "temporada=" + temporada +
-                ", titulo='" + titulo + '\'' +
-                ", numeroEpisodio=" + numeroEpisodio +
-                ", avaliacao=" + avaliacao +
-                ", dataLancamento=" + dataLancamento ;
+        return "Temporada=" + temporada +
+                ", Título='" + titulo + '\'' +
+                ", Número do Episódio=" + numeroEpisodio +
+                ", Avaliação=" + avaliacao +
+                ", Data de Lançamento=" + dataLancamento;
     }
 }
