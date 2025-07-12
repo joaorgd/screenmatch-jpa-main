@@ -5,7 +5,9 @@ public enum Categoria {
     ROMANCE("Romance"),
     COMEDIA("Comedy"),
     DRAMA("Drama"),
-    CRIME("Crime");
+    CRIME("Crime"),
+    AVENTURA("Adventure"),
+    ANIMAÇÃO("Animation");
 
     // Atributo para armazenar o valor de texto correspondente ao da API.
     private String categoriaOmdb;
