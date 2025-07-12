@@ -23,7 +23,7 @@ public class Principal {
     private final String ENDERECO = "https://www.omdbapi.com/?t=";
     private final String API_KEY = "&apikey=6585022c";
 
-    private List<Serie> series = new ArrayList<>();
+    private List<Serie> seriesBuscadas = new ArrayList<>(); // Renomeado para clareza
 
     private SerieRepository repositorio;
 
@@ -39,6 +39,7 @@ public class Principal {
                     1 - Salvar nova série no banco
                     2 - Buscar episódios de uma série
                     3 - Listar séries salvas no banco
+                    4 - Buscar série por título
                     
                     0 - Sair
                     *************************************************
@@ -58,6 +59,9 @@ public class Principal {
                     break;
                 case 3:
                     listarSeriesBuscadas();
+                    break;
+                case 4:
+                    buscarSeriePorTitulo();
                     break;
                 case 0:
                     System.out.println("Saindo...");
@@ -83,50 +87,62 @@ public class Principal {
         return dados;
     }
 
-    // MÉTODO CORRIGIDO E REATORADO
     private void buscarEpisodioPorSerie() {
-        // Agora não precisamos mais carregar todas as séries em memória primeiro.
-        // A busca é feita diretamente no banco de dados.
+        listarSeriesBuscadas();
         System.out.println("\nDigite o nome da série da qual deseja ver os episódios:");
         var nomeSerie = leitura.nextLine();
 
-        // Utiliza o método do repositório para buscar no banco de forma eficiente.
-        Optional<Serie> serieEncontrada = repositorio.findByTituloContainingIgnoreCase(nomeSerie);
+        // A busca no repositório agora retorna uma lista de possíveis séries.
+        List<Serie> seriesEncontradas = repositorio.findByTituloContainingIgnoreCase(nomeSerie);
 
-        if (serieEncontrada.isPresent()) {
-            Serie serieAchada = serieEncontrada.get();
+        // Se mais de uma série for encontrada, o ideal seria pedir para o usuário especificar.
+        // Para simplificar, vamos pegar a primeira da lista, mas avisando o usuário.
+        if (!seriesEncontradas.isEmpty()) {
+            Serie serieAchada = seriesEncontradas.get(0); // Pega o primeiro resultado da busca
+            if (seriesEncontradas.size() > 1) {
+                System.out.println("Múltiplas séries encontradas, processando a primeira: " + serieAchada.getTitulo());
+            }
+
             List<DadosTemporada> temporadas = new ArrayList<>();
-
-            // Busca os dados de todas as temporadas na API
             for (int i = 1; i <= serieAchada.getTotalTemporadas(); i++) {
                 var json = consumo.obterDados(ENDERECO + serieAchada.getTitulo().replace(" ", "+") + "&season=" + i + API_KEY);
                 DadosTemporada dadosTemporada = conversor.obterDados(json, DadosTemporada.class);
                 temporadas.add(dadosTemporada);
             }
-            System.out.println("\nTemporadas de " + serieAchada.getTitulo() + " encontradas na API:");
-            temporadas.forEach(System.out::println);
 
-            // Transforma os dados dos episódios em entidades e associa à série
             List<Episodio> episodios = temporadas.stream()
-                    .flatMap(d -> d.episodios().stream()
-                            .map(e -> new Episodio(d.numero(), e)))
+                    .flatMap(d -> d.episodios().stream().map(e -> new Episodio(d.numero(), e)))
                     .collect(Collectors.toList());
 
             serieAchada.setEpisodios(episodios);
-            // Salva a série com a lista de episódios atualizada, graças ao Cascade.
             repositorio.save(serieAchada);
 
-            System.out.println("\nEpisódios salvos no banco para a série: " + serieAchada.getTitulo());
-
+            System.out.println("\nEpisódios de '" + serieAchada.getTitulo() + "' salvos no banco!");
         } else {
             System.out.println("Série não encontrada no banco de dados!");
         }
     }
 
     private void listarSeriesBuscadas() {
-        series = repositorio.findAll();
+        seriesBuscadas = repositorio.findAll();
         System.out.println("\nSéries salvas no banco de dados:");
-        series.sort(Comparator.comparing(Serie::getGenero));
-        series.forEach(System.out::println);
+        seriesBuscadas.sort(Comparator.comparing(Serie::getGenero));
+        seriesBuscadas.forEach(System.out::println);
+    }
+
+    private void buscarSeriePorTitulo() {
+        System.out.println("Digite um trecho do título da série que deseja buscar: ");
+        var nomeSerie = leitura.nextLine();
+
+        // A busca agora retorna uma lista, evitando o erro.
+        List<Serie> seriesEncontradas = repositorio.findByTituloContainingIgnoreCase(nomeSerie);
+
+        if (!seriesEncontradas.isEmpty()) {
+            System.out.println("Séries encontradas:");
+            // Mostra todas as séries que correspondem à busca.
+            seriesEncontradas.forEach(System.out::println);
+        } else {
+            System.out.println("Nenhuma série encontrada com este título no banco de dados.");
+        }
     }
 }
