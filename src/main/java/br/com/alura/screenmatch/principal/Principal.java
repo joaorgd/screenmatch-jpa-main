@@ -15,10 +15,6 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 
-/**
- * Classe principal da aplicação, responsável por interagir com o usuário
- * através de um menu de console e orquestrar as operações de busca e persistência de dados.
- */
 public class Principal {
 
     private final Scanner leitura = new Scanner(System.in);
@@ -27,25 +23,14 @@ public class Principal {
     private final String ENDERECO = "https://www.omdbapi.com/?t=";
     private final String API_KEY = "&apikey=6585022c";
 
-    // Lista que serve como um cache temporário das séries buscadas do banco de dados,
-    // utilizada principalmente para a exibição na busca de episódios.
     private List<Serie> seriesBuscadas = new ArrayList<>();
 
-    // O repositório é a interface de acesso ao banco de dados.
-    // É uma dependência que será injetada pelo Spring.
     private final SerieRepository repositorio;
 
-    /**
-     * Construtor que recebe o repositório via injeção de dependência do Spring.
-     * @param repositorio A implementação do SerieRepository fornecida pelo Spring Data JPA.
-     */
     public Principal(SerieRepository repositorio) {
         this.repositorio = repositorio;
     }
 
-    /**
-     * Exibe o menu principal e gerencia o fluxo da aplicação com base na entrada do usuário.
-     */
     public void exibeMenu() {
         var opcao = -1;
         while (opcao != 0) {
@@ -56,6 +41,7 @@ public class Principal {
                     3 - Listar séries salvas no banco
                     4 - Buscar série por título
                     5 - Buscar série por ator
+                    6 - Buscar Top 5 séries
                     
                     0 - Sair
                     *************************************************
@@ -82,6 +68,9 @@ public class Principal {
                 case 5:
                     buscarSeriePorAtor();
                     break;
+                case 6: // Nova opção de menu
+                    buscarTop5Series();
+                    break;
                 case 0:
                     System.out.println("Saindo...");
                     break;
@@ -91,20 +80,13 @@ public class Principal {
         }
     }
 
-    /**
-     * Busca os dados de uma série na API web e os persiste no banco de dados.
-     */
     private void buscarSerieWeb() {
         DadosSerie dados = getDadosSerie();
         Serie serie = new Serie(dados);
-        repositorio.save(serie); // Salva a entidade Serie no banco.
+        repositorio.save(serie);
         System.out.println("\nSérie salva no banco de dados com sucesso!");
     }
 
-    /**
-     * Helper method para obter os dados brutos de uma série da API OMDb.
-     * @return um objeto DadosSerie com as informações da API.
-     */
     private DadosSerie getDadosSerie() {
         System.out.println("Digite o nome da série para busca:");
         var nomeSerie = leitura.nextLine();
@@ -112,11 +94,8 @@ public class Principal {
         return conversor.obterDados(json, DadosSerie.class);
     }
 
-    /**
-     * Busca os episódios de uma série já salva, os associa à entidade e os persiste no banco.
-     */
     private void buscarEpisodioPorSerie() {
-        listarSeriesBuscadas(); // Mostra as séries já salvas para facilitar a escolha do usuário.
+        listarSeriesBuscadas();
         System.out.println("\nDigite um trecho do nome da série da qual deseja ver os episódios:");
         var nomeSerie = leitura.nextLine();
 
@@ -128,22 +107,18 @@ public class Principal {
                 System.out.println("Múltiplas séries encontradas, processando a primeira: " + serieAchada.getTitulo());
             }
 
-            // Busca os dados de todas as temporadas na API externa.
             List<DadosTemporada> temporadas = new ArrayList<>();
             for (int i = 1; i <= serieAchada.getTotalTemporadas(); i++) {
                 var json = consumo.obterDados(ENDERECO + serieAchada.getTitulo().replace(" ", "+") + "&season=" + i + API_KEY);
                 temporadas.add(conversor.obterDados(json, DadosTemporada.class));
             }
 
-            // Mapeia os dados dos episódios para entidades Episodio.
             List<Episodio> episodios = temporadas.stream()
                     .flatMap(d -> d.episodios().stream()
                             .map(e -> new Episodio(d.numero(), e)))
                     .collect(Collectors.toList());
 
-            // Associa a lista de episódios à entidade Serie.
             serieAchada.setEpisodios(episodios);
-            // Salva a série com os episódios associados, graças ao CascadeType.ALL.
             repositorio.save(serieAchada);
 
             System.out.println("\nEpisódios de '" + serieAchada.getTitulo() + "' salvos no banco!");
@@ -152,9 +127,6 @@ public class Principal {
         }
     }
 
-    /**
-     * Lista todas as séries que estão salvas no banco de dados, ordenadas por gênero.
-     */
     private void listarSeriesBuscadas() {
         seriesBuscadas = repositorio.findAll();
         seriesBuscadas.sort(Comparator.comparing(Serie::getGenero));
@@ -162,9 +134,6 @@ public class Principal {
         seriesBuscadas.forEach(System.out::println);
     }
 
-    /**
-     * Busca séries no banco de dados por um trecho do título.
-     */
     private void buscarSeriePorTitulo() {
         System.out.println("Digite um trecho do título da série que deseja buscar: ");
         var nomeSerie = leitura.nextLine();
@@ -178,15 +147,12 @@ public class Principal {
         }
     }
 
-    /**
-     * Busca séries no banco de dados por nome de ator e avaliação mínima.
-     */
     private void buscarSeriePorAtor() {
         System.out.println("Qual o nome do ator para busca?");
         var nomeAtor = leitura.nextLine();
         System.out.println("Avaliações a partir de qual valor?");
         var avaliacao = leitura.nextDouble();
-        leitura.nextLine(); // Limpa o buffer do scanner
+        leitura.nextLine();
 
         List<Serie> seriesEncontradas = repositorio.findByAtoresContainingIgnoreCaseAndAvaliacaoGreaterThanEqual(nomeAtor, avaliacao);
 
@@ -197,5 +163,15 @@ public class Principal {
         } else {
             System.out.println("\nNenhuma série encontrada para '" + nomeAtor + "' com os critérios informados.");
         }
+    }
+
+    /**
+     * Busca as 5 séries com as melhores avaliações no banco de dados e as exibe.
+     */
+    private void buscarTop5Series() {
+        List<Serie> topSeries = repositorio.findTop5ByOrderByAvaliacaoDesc();
+        System.out.println("\nTop 5 melhores séries no banco de dados:");
+        topSeries.forEach(s ->
+                System.out.println("  - " + s.getTitulo() + " (Avaliação: " + s.getAvaliacao() + ")"));
     }
 }
